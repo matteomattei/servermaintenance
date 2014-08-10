@@ -226,7 +226,7 @@ then
         # Configure NGINX for production
         sed -i "{s/# gzip on;/gzip on;/g}" /etc/nginx/nginx.conf
         sed -i "{s/# gzip_/gzip_/g}" /etc/nginx/nginx.conf
-        sed -i "{s/# server_tokens off;/server_tokens off;}" /etc/nginx/nginx.conf
+        sed -i "{s/# server_tokens off;/server_tokens off;/g}" /etc/nginx/nginx.conf
         sed -i "/gzip_types/s/;/ image\/svg+xml;/" /etc/nginx/nginx.conf
     else
         pretty_echo "NGINX already installed... nothing done"

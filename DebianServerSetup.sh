@@ -203,6 +203,10 @@ then
         echo "mysql-server mysql-server/root_password password ${MYSQL_ROOT_PASSWORD}" | debconf-set-selections
         echo "mysql-server mysql-server/root_password_again password ${MYSQL_ROOT_PASSWORD}" | debconf-set-selections
         apt-get -y install mysql-server
+
+        # Configure MYSQL
+        sed -i "{s/^key_buffer\s/key_buffer_size/g}" /etc/mysql/my.cnf
+        sed -i "{s/^myisam-recover\s/myisam-recover-options/g}" /etc/mysql/my.cnf
     else
         pretty_echo "MYSQL server already installed... nothing done"
     fi

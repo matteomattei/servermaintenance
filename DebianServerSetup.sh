@@ -304,7 +304,7 @@ if select_yes "Do you want to add a public key for SSH access?"
 then
     while true
     do
-        pretty_echo "Please copy your public key here"
+        pretty_echo "Please paste your public key here:"
         read PUBKEY
         if [ -n "${PUBKEY}" ]
         then

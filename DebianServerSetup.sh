@@ -271,6 +271,7 @@ then
     # Configuration
     sed -i "{s/^dc_eximconfig_configtype=.*/dc_eximconfig_configtype='internet'/g}" /etc/exim4/update-exim4.conf.conf
     sed -i "{s/^dc_other_hostnames=.*/dc_other_hostnames='${HOSTNAME_FQDN}; ${HOSTNAME_NAME}; localhost.localdomain; localhost'/g}" /etc/exim4/update-exim4.conf.conf
+    echo "${HOSTNAME_FQDN}" > /etc/mailname
 fi
 
 # SHOREWALL

@@ -248,6 +248,9 @@ then
         # Configure APACHE for production
         sed -i "{s/80/8080/g}" /etc/apache2/ports.conf
         sed -i "{s/80/8080/g}" /etc/apache2/sites-available/default
+
+        # Apache modules
+        a2enmod fastcgi actions alias rewrite
     else
         pretty_echo "APACHE already installed... nothing done"
     fi
@@ -262,19 +265,6 @@ then
 
         # Configure PHP-FPM
         sed -i "{s/^;cgi\.fix_pathinfo=1/cgi.fix_pathinfo=0/g}" /etc/php5/fpm/php.ini
-
-        cp /etc/apache2/mods-available/fastcgi.conf /etc/apache2/mods-available/fastcgi.conf.original
-#         cat << EOF > /etc/apache2/mods-available/fastcgi.conf
-# <IfModule mod_fastcgi.c>
-#  AddHandler php5-fcgi .php
-#  Action php5-fcgi /php5-fcgi
-#  AddType application/x-httpd-fastphp5 .php
-#  Action application/x-httpd-fastphp5 /php5-fcgi
-#  Alias /php5-fcgi /usr/lib/cgi-bin/php5-fcgi
-#  FastCgiExternalServer /usr/lib/cgi-bin/php5-fcgi -socket /var/run/php5-fpm.sock -pass-header Authorization
-# </IfModule>
-# EOF
-        a2enmod fastcgi actions alias rewrite
         sed -i -e 's|^;*request_terminate_timeout.*|request_terminate_timeout = 600|' /etc/php5/fpm/pool.d/www.conf
         sed -i "{s/;pm.max_requests =.*/pm.max_requests = 500/g}" /etc/php5/fpm/pool.d/www.conf
 

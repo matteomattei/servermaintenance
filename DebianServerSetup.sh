@@ -52,7 +52,8 @@ needed for a production Web Server based on Debian based distribution.
 This is the list of the services supported:
 
 1) MySQL (database server)
-2) NGINX (web server)
+2) NGINX (reverse proxy web server)
+3) APACHE (web server)
 3) PHP (web backend)
 4) EXIM (MTA mail server)
 5) SHOREWALL (firewall)
@@ -162,11 +163,11 @@ do
         # remove all lines with localhost and the public IP from /etc/hosts
         sed -i "/^${IP_ADDRESS}.*/d" /etc/hosts
         sed -i "/^127\.0\..*/d" /etc/hosts
-        
+
         # Insert the correct values in the top of the /etc/hosts
         sed -i "1i ${IP_ADDRESS} ${HOSTNAME_FQDN} ${HOSTNAME_NAME}" /etc/hosts
         sed -i "1i 127.0.0.1 localhost.localdomain localhost" /etc/hosts
-        
+
         # Set up hostname
         echo "${HOSTNAME_NAME}" > /etc/hostname
         hostname -F /etc/hostname
@@ -221,12 +222,12 @@ then
 fi
 
 # NGINX
-if select_yes "Do you want to install NGINX web server?"
+if select_yes "Do you want to install NGINX reverse proxy web server?"
 then
     if ! $(is_installed nginx)
     then
         apt-get -y install nginx
-        
+
         # Configure NGINX for production
         sed -i "{s/# gzip on;/gzip on;/g}" /etc/nginx/nginx.conf
         sed -i "{s/# gzip_/gzip_/g}" /etc/nginx/nginx.conf
@@ -237,16 +238,46 @@ then
     fi
 fi
 
+# APACHE
+if select_yes "Do you want to install APACHE web server?"
+then
+    if ! $(is_installed apache2)
+    then
+        apt-get -y install apache2 libapache2-mod-fastcgi apache2-mpm-worker
+
+        # Configure APACHE for production
+        sed -i "{s/80/8080/g}" /etc/apache2/ports.conf
+        sed -i "{s/80/8080/g}" /etc/apache2/sites-available/default
+    else
+        pretty_echo "APACHE already installed... nothing done"
+    fi
+fi
+
 # PHP-FPM
-if select_yes "Do you want to install PHP-FPM for NGINX?"
+if select_yes "Do you want to install PHP-FPM?"
 then
     if ! $(is_installed php5-fpm)
     then
-        apt-get -y install php5-fpm
-        
-        # Configure PHP-FPM for NGINX
+        apt-get -y install php5 php5-fpm
+
+        # Configure PHP-FPM
         sed -i "{s/^;cgi\.fix_pathinfo=1/cgi.fix_pathinfo=0/g}" /etc/php5/fpm/php.ini
-        
+
+        cp /etc/apache2/mods-available/fastcgi.conf /etc/apache2/mods-available/fastcgi.conf.original
+#         cat << EOF > /etc/apache2/mods-available/fastcgi.conf
+# <IfModule mod_fastcgi.c>
+#  AddHandler php5-fcgi .php
+#  Action php5-fcgi /php5-fcgi
+#  AddType application/x-httpd-fastphp5 .php
+#  Action application/x-httpd-fastphp5 /php5-fcgi
+#  Alias /php5-fcgi /usr/lib/cgi-bin/php5-fcgi
+#  FastCgiExternalServer /usr/lib/cgi-bin/php5-fcgi -socket /var/run/php5-fpm.sock -pass-header Authorization
+# </IfModule>
+# EOF
+        a2enmod fastcgi actions alias rewrite
+        sed -i -e 's|^;*request_terminate_timeout.*|request_terminate_timeout = 600|' /etc/php5/fpm/pool.d/www.conf
+        sed -i "{s/;pm.max_requests =.*/pm.max_requests = 500/g}" /etc/php5/fpm/pool.d/www.conf
+
         # PHP-MYSQL
         if $(is_installed mysql-server)
         then
@@ -267,7 +298,7 @@ then
     fi
     # Clean mail queue
     [ -n "$(mailq)" ] && rm -f /var/spool/exim4/input/*
-    
+
     # Configuration
     sed -i "{s/^dc_eximconfig_configtype=.*/dc_eximconfig_configtype='internet'/g}" /etc/exim4/update-exim4.conf.conf
     sed -i "{s/^dc_other_hostnames=.*/dc_other_hostnames='${HOSTNAME_FQDN}; ${HOSTNAME_NAME}; localhost.localdomain; localhost'/g}" /etc/exim4/update-exim4.conf.conf
@@ -281,7 +312,7 @@ then
     then
         apt-get -y install shorewall
     fi
-    
+
     # Configuration
     sed -i "{s/^startup=0$/startup=1/g}" /etc/default/shorewall
     cp /usr/share/doc/shorewall/examples/one-interface/interfaces /etc/shorewall/interfaces
@@ -321,7 +352,8 @@ then
 fi
 
 # DOWNLOAD MANAGEMENT TOOLS
-# TODO
+wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/add_domain.sh && chmod 750 add_domain.sh
+wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/del_domain.sh && chmod 750 del_domain.sh
 
 # RESTART SERVICES
 pretty_echo "Restarting all services..."
@@ -333,6 +365,9 @@ if $(is_installed php5-fpm); then
 fi
 if $(is_installed nginx); then
     service nginx restart
+fi
+if $(is_installed apache2); then
+    service apache2 restart
 fi
 if $(is_installed exim4); then
     service exim4 restart

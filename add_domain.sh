@@ -43,8 +43,8 @@ cp /etc/php5/fpm/pool.d/www.conf /etc/php5/fpm/pool.d/${DOMAIN}.conf
 sed -i "{s#^user = www-data#user = web${NEW_UID}#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
 sed -i "{s#^group = www-data#group = web${NEW_UID}#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
 sed -i "{s#^\[www\]#[${DOMAIN}]#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
-sed -i "{s#^listen = .*.sock#listen = /var/run/php5-fpm/${DOMAIN}.sock#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
-sed -i "{s#^;chroot =.*#chroot = ${BASE_ROOT}/${DOMAIN}/public_html#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
+sed -i "{s#^listen = .*.sock#listen = /var/run/php5-fpm_${DOMAIN}.sock#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
+#sed -i "{s#^;chroot =.*#chroot = ${BASE_ROOT}/${DOMAIN}/public_html#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
 sed -i "{s#^;env\[TMP\] =.*#env[TMP] = ${BASE_ROOT}/${DOMAIN}/tmp#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
 sed -i "{s#^;env\[TMPDIR\] =.*#env[TMPDIR] = ${BASE_ROOT}/${DOMAIN}/tmp#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
 sed -i "{s#^;env\[TEMP\] =.*#env[TEMP] = ${BASE_ROOT}/${DOMAIN}/tmp#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
@@ -99,7 +99,7 @@ server {
   location ~* ^.+.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt)\$ {
     root ${BASE_ROOT}/${DOMAIN}/public_html;
     access_log off;
-    log_not_found off;
+    #log_not_found off;
     expires 7d;
   }
 }

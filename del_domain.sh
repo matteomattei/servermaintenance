@@ -30,7 +30,7 @@ rm -f /etc/nginx/sites-available/${DOMAIN}
 rm -f /etc/nginx/sites-enabled/${DOMAIN}
 rm -f /etc/apache2/sites-available/${DOMAIN}
 rm -f /etc/apache2/sites-enabled/${DOMAIN}
-grep -v "^${DOMAIN}:" ${DB_DOMAINS} > ${DB_DOMAINS}.tmp && mv ${DB_DOMAINS}.tmp ${DB_DOMAINS}
+grep -v "^${DOMAIN}:" ${DB_DOMAINS} > ${DB_DOMAINS}.tmp; mv ${DB_DOMAINS}.tmp ${DB_DOMAINS}
 
 service php5-fpm stop
 service nginx stop

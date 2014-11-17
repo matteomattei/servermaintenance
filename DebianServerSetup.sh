@@ -94,7 +94,7 @@ apt-get -y upgrade
 apt-get -y dist-upgrade
 
 # INSTALL USEFUL TOOLS
-apt-get -y install vim
+apt-get -y install vim git
 
 # SETUP IP ADDRESS AND HOSTNAME
 IP_ADDRESS=$(ifconfig | grep "inet addr:" | grep -v "127\.0\.0\.1" | awk '{print $2}' | awk -F':' '{print $2}')
@@ -353,11 +353,11 @@ fi
 if $(is_installed php5-fpm); then
     service php5-fpm restart
 fi
-if $(is_installed nginx); then
-    service nginx restart
-fi
 if $(is_installed apache2); then
     service apache2 restart
+fi
+if $(is_installed nginx); then
+    service nginx restart
 fi
 if $(is_installed exim4); then
     service exim4 restart

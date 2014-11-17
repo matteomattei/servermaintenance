@@ -106,7 +106,7 @@ server {
 EOF
 
 # Write Apache2 configuration for domain
-cat << EOF > /etc/nginx/sites-available/${DOMAIN}
+cat << EOF > /etc/apache2/sites-available/${DOMAIN}
 <VirtualHost *:8080>
     ServerAdmin info@${DOMAIN}
     ServerName ${DOMAIN}

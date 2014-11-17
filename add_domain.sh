@@ -62,9 +62,9 @@ server {
  location / {
     proxy_pass         http://127.0.0.1:8080/;
     proxy_redirect     off;
-    proxy_set_header   Host             $host;
-    proxy_set_header   X-Real-IP        $remote_addr;
-    proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
+    proxy_set_header   Host             \$host;
+    proxy_set_header   X-Real-IP        \$remote_addr;
+    proxy_set_header   X-Forwarded-For  \$proxy_add_x_forwarded_for;
     client_max_body_size       10m;
     client_body_buffer_size    128k;
     proxy_connect_timeout      90;
@@ -80,14 +80,14 @@ server {
   location /phpmyadmin {
     root /usr/share/;
     index index.php index.html index.htm;
-    location ~ ^/phpmyadmin/(.+\.php)$ {
-      try_files $uri =404;
+    location ~ ^/phpmyadmin/(.+\.php)\$ {
+      try_files \$uri =404;
       root /usr/share/;
       fastcgi_pass unix:/var/run/php5-fpm.sock;
       fastcgi_index index.php;
       include fastcgi_params;
     }
-    location ~* ^/phpmyadmin/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))$ {
+    location ~* ^/phpmyadmin/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))\$ {
       root /usr/share/;
       expires 7d;
     }
@@ -96,7 +96,7 @@ server {
     rewrite ^/* /phpmyadmin last;
   }
 
-  location ~* ^.+.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt)$ {
+  location ~* ^.+.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt)\$ {
     root ${BASE_ROOT}/${DOMAIN}/public_html;
     access_log off;
     log_not_found off;

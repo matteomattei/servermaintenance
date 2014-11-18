@@ -246,8 +246,9 @@ then
         apt-get -y install apache2 libapache2-mod-fastcgi apache2-mpm-worker
 
         # Configure APACHE for production
-        sed -i "{s/80/8080/g}" /etc/apache2/ports.conf
-        sed -i "{s/80/8080/g}" /etc/apache2/sites-available/default
+        sed -i "{s/^NameVirtualHost.*/NameVirtualHost 127.0.0.1:8080/g}" /etc/apache2/ports.conf
+        sed -i "{s/^Listen.*/Listen 127.0.0.1:8080/g}" /etc/apache2/ports.conf
+        sed -i "{s/<VirtualHost.*/<VirtualHost 127.0.0.1:8080>/g}" /etc/apache2/sites-available/default
 
         # Apache modules
         a2enmod fastcgi actions alias rewrite

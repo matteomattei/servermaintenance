@@ -54,27 +54,12 @@ service php5-fpm restart
 # Write NGINX configuration for domain
 cat << EOF > /etc/nginx/sites-available/${DOMAIN}
 server {
- listen       80;
- server_name  www.${DOMAIN} ${DOMAIN};
- access_log   ${BASE_ROOT}/${DOMAIN}/logs/nginx.access.log;
- error_log    ${BASE_ROOT}/${DOMAIN}/logs/nginx.error.log;
-
- location / {
-    proxy_pass         http://127.0.0.1:8080/;
-    proxy_redirect     off;
-    proxy_set_header   Host             \$host;
-    proxy_set_header   X-Real-IP        \$remote_addr;
-    proxy_set_header   X-Forwarded-For  \$proxy_add_x_forwarded_for;
-    client_max_body_size       10m;
-    client_body_buffer_size    128k;
-    proxy_connect_timeout      90;
-    proxy_send_timeout         90;
-    proxy_read_timeout         90;
-    proxy_buffer_size          4k;
-    proxy_buffers               4 32k;
-    proxy_busy_buffers_size     64k;
-    proxy_temp_file_write_size 64k;
-  }
+  listen       80;
+  server_name  www.${DOMAIN} ${DOMAIN};
+  access_log   ${BASE_ROOT}/${DOMAIN}/logs/nginx.access.log;
+  error_log    ${BASE_ROOT}/${DOMAIN}/logs/nginx.error.log;
+  root ${BASE_ROOT}/${DOMAIN}/public_html;
+  index index.php index.html index.htm;
 
   # PHPMYADMIN
   location /phpmyadmin {
@@ -92,22 +77,57 @@ server {
       expires 7d;
     }
   }
-  location /phpMyAdmin {
-    rewrite ^/* /phpmyadmin last;
+
+  location / {
+    try_files \$uri \$uri/ @proxy;
   }
 
-  location ~* ^.+.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt)\$ {
+  location ~* \.(gif|jpg|jpeg|png|ico|wmv|3gp|avi|mpg|mpeg|mp4|flv|mp3|mid|js|css|html|htm|wml)$ {
     root ${BASE_ROOT}/${DOMAIN}/public_html;
-    access_log off;
+    #access_log off;
     #log_not_found off;
     expires 7d;
+  }
+
+  location @proxy {
+    proxy_pass         http://127.0.0.1:8080;
+    proxy_redirect     off;
+    proxy_set_header   Host             \$host;
+    proxy_set_header   X-Real-IP        \$remote_addr;
+    proxy_set_header   X-Forwarded-For  \$proxy_add_x_forwarded_for;
+    client_max_body_size       10m;
+    client_body_buffer_size    128k;
+    proxy_connect_timeout      90;
+    proxy_send_timeout         90;
+    proxy_read_timeout         90;
+    proxy_buffer_size          4k;
+    proxy_buffers               4 32k;
+    proxy_busy_buffers_size     64k;
+    proxy_temp_file_write_size 64k;
+  }
+
+  location ~* \.php$ {
+    proxy_pass         http://127.0.0.1:8080;
+    proxy_redirect     off;
+    proxy_set_header   Host             \$host;
+    proxy_set_header   X-Real-IP        \$remote_addr;
+    proxy_set_header   X-Forwarded-For  \$proxy_add_x_forwarded_for;
+    client_max_body_size       10m;
+    client_body_buffer_size    128k;
+    proxy_connect_timeout      90;
+    proxy_send_timeout         90;
+    proxy_read_timeout         90;
+    proxy_buffer_size          4k;
+    proxy_buffers               4 32k;
+    proxy_busy_buffers_size     64k;
+    proxy_temp_file_write_size 64k;
   }
 }
 EOF
 
 # Write Apache2 configuration for domain
 cat << EOF > /etc/apache2/sites-available/${DOMAIN}
-<VirtualHost *:8080>
+<VirtualHost 127.0.0.1:8080>
     ServerAdmin info@${DOMAIN}
     ServerName ${DOMAIN}
     ServerAlias www.${DOMAIN}

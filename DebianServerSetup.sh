@@ -232,10 +232,13 @@ then
         apt-get -y install nginx
 
         # Configure NGINX for production
+        CPU_CORES=`grep "^processor" /proc/cpuinfo | wc -l`
         sed -i "{s/# gzip on;/gzip on;/g}" /etc/nginx/nginx.conf
         sed -i "{s/# gzip_/gzip_/g}" /etc/nginx/nginx.conf
         sed -i "{s/# server_tokens off;/server_tokens off;/g}" /etc/nginx/nginx.conf
         sed -i "/gzip_types/s/;/ image\/svg+xml;/" /etc/nginx/nginx.conf
+        sed -i "{s/^worker_processes.*/worker_processes ${CPU_CORES};/g}" /etc/nginx/nginx.conf
+        sed -i "{s/worker_connections.*/worker_connections 1024;/g}" /etc/nginx/nginx.conf
     else
         pretty_echo "NGINX already installed... nothing done"
     fi

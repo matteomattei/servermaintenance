@@ -94,8 +94,10 @@ server {
     expires 7d;
   }
 
-  # deny access to .htaccess files
-  location ~ /\.ht {
+  # deny access to .* files
+  location ~ /\. {
+    access_log off;
+    log_not_found off;
     deny all;
   }
 

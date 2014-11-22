@@ -72,6 +72,9 @@ if ! select_yes "Do you want to proceed?"; then exit 0; fi
 # This is just for clean-up in case some server has an old repository configured
 sed -i "/non\-us\.debian\.org/d" /etc/apt/sources.list
 
+# Make sure to use wheezy repository
+sed -i "{s#squeeze.*#wheezy/updates main contrib non-free#g}" /etc/apt/sources.list
+
 # SETTING UP LOCALES
 # This is needed in case the server does not have any locale already configured
 if [ -z "${LC_ALL}" ] || [ -z "${LANGUAGE}" ] || [ -z "${LANG}" ]

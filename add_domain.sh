@@ -26,8 +26,9 @@ else
 	fi
 	NEW_UID=$((${LAST_UID}+1))
 fi
-echo "${DOMAIN}:${NEW_UID}" > ${DB_DOMAINS}
-useradd --comment="WEB_USER_${NEW_UID},,," --home-dir=${BASE_ROOT}/${DOMAIN} --no-log-init --create-home --shell=/bin/false --uid=${NEW_UID} web${NEW_UID}
+echo "${DOMAIN}:${NEW_UID}" >> ${DB_DOMAINS}
+useradd --comment="WEB_USER_${NEW_UID},,," --home-dir=${BASE_ROOT}/${DOMAIN} --no-log-init --create-home --shell=/bin/bash --uid=${NEW_UID} web${NEW_UID}
+passwd -l web${NEW_UID}
 
 # Make sure to have the folder for php pools
 mkdir -p /var/run/php5-fpm
@@ -44,10 +45,10 @@ sed -i "{s#^user = www-data#user = web${NEW_UID}#g}" /etc/php5/fpm/pool.d/${DOMA
 sed -i "{s#^group = www-data#group = web${NEW_UID}#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
 sed -i "{s#^\[www\]#[${DOMAIN}]#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
 sed -i "{s#^listen = .*.sock#listen = /var/run/php5-fpm_${DOMAIN}.sock#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
-#sed -i "{s#^;chroot =.*#chroot = ${BASE_ROOT}/${DOMAIN}/public_html#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
 sed -i "{s#^;env\[TMP\] =.*#env[TMP] = ${BASE_ROOT}/${DOMAIN}/tmp#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
 sed -i "{s#^;env\[TMPDIR\] =.*#env[TMPDIR] = ${BASE_ROOT}/${DOMAIN}/tmp#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
 sed -i "{s#^;env\[TEMP\] =.*#env[TEMP] = ${BASE_ROOT}/${DOMAIN}/tmp#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
+#sed -i "{s#^;chroot =.*#chroot = ${BASE_ROOT}/${DOMAIN}/public_html#g}" /etc/php5/fpm/pool.d/${DOMAIN}.conf
 
 service php5-fpm restart
 
@@ -79,7 +80,11 @@ server {
   }
 
   location / {
-    try_files \$uri \$uri/ @proxy;
+    # Uncomment this for pure HTML website
+    #try_files \$uri \$uri/ @proxy;
+
+    # Uncomment this for PHP (CodeIgniter) website
+    try_files \$uri @proxy;
   }
 
   location ~* \.(gif|jpg|jpeg|png|ico|wmv|3gp|avi|mpg|mpeg|mp4|flv|mp3|mid|js|css|html|htm|wml)$ {
@@ -87,6 +92,11 @@ server {
     #access_log off;
     #log_not_found off;
     expires 7d;
+  }
+
+  # deny access to .htaccess files
+  location ~ /\.ht {
+    deny all;
   }
 
   location @proxy {

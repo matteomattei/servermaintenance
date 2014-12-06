@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-
+ADMIN_EMAIL="info@matteomattei.com"
 DOMAIN=${1}
 FTP_PASSWORD="$(apg -n 1 -m 8 -d)"
 
@@ -34,7 +34,7 @@ echo "local_root=/var/www/vhosts/${DOMAIN}" >> /etc/vsftpd/users/${DOMAINUSER}
 CONF_FILE="/etc/apache2/sites-available/${DOMAIN}"
 
 echo "<VirtualHost *:8080>" > ${CONF_FILE}
-echo "    ServerAdmin info@altrosito.it" >> ${CONF_FILE}
+echo "    ServerAdmin ${ADMIN_EMAIL}" >> ${CONF_FILE}
 echo "    ServerName ${DOMAIN}" >> ${CONF_FILE}
 echo "    #ALIAS DO-NOT-REMOVE-OR-ALTER-THIS-LINE" >> ${CONF_FILE}
 echo "    ServerAlias www.${DOMAIN}" >> ${CONF_FILE}

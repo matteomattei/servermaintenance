@@ -34,6 +34,7 @@ do
 	NAME=$(basename ${i})
 	/root/DEL_FTP_VIRTUAL_USER.sh ${NAME} &> /dev/null
 done
+rm -f /etc/vsftpd/users/${DOMAINUSER}
 
 /etc/init.d/apache2 reload > /dev/null
 /etc/init.d/vsftpd restart > /dev/null

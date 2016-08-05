@@ -317,6 +317,56 @@ then
     echo "SSH/ACCEPT      net             \$FW" >> /etc/shorewall/rules
 fi
 
+# BACKUP ON MEGA.CO.NZ
+if select_yes "Do you want to install megatools?"
+then
+    echo "[Login]" > /root/.megarc
+    while true
+    do
+        pretty_echo "Please provide Mega.co.nz username (email):"
+        read MEGA_USERNAME
+        if [ -n "${MEGA_USERNAME}" ]
+        then
+            echo "Username = ${MEGA_USERNAME}" >> /root/.megarc
+            break
+        else
+            pretty_echo "Please specify Mega.co.nz username"
+        fi
+    done
+    while true
+    do
+        pretty_echo "Please provide Mega.co.nz password:"
+        read MEGA_PASSWORD
+        if [ -n "${MEGA_PASSWORD}" ]
+        then
+            echo "Password = ${MEGA_PASSWORD}" >> /root/.megarc
+            break
+        else
+            pretty_echo "Please provide Mega.co.nz password"
+        fi
+    done
+    chmod 640 /root/.megarc
+    if ! $(is_installed megatools)
+    then
+        apt-get install -y \
+            glib-networking \
+            libproxy1 \
+            glib-networking-services \
+            glib-networking-common \
+            gsettings-desktop-schemas \
+            dconf-gsettings-backend \
+            dconf-service \
+            libdconf1 \
+            libcurl3
+        wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/backup/megatools_1.9.97-1_amd64.deb
+        dpkg -i megatools_*.deb
+        rm -f megatools_*.deb
+        wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/backup/megabackup.sh && chmod +x megabackup.sh
+        sed -i "{s/MyRootPassword/${MYSQL_ROOT_PASSWORD}/g}" megabackup.sh
+        echo "04 04 * * * root /root/megabackup.sh" >> /etc/crontab
+    fi
+fi
+
 # SSH KEY
 if select_yes "Do you want to add a public key for SSH access?"
 then

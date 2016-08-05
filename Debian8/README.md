@@ -9,6 +9,7 @@ This is an automatic script that installs and configure the following services o
  - PHPMYADMIN
  - SHOREWALL
  - POSTFIX
+ - BACKUP SYSTEM (MEGA.CO.NZ)
  - A SET OF TOOL TO MANGE DOMAINS
 
 ```

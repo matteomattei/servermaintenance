@@ -46,22 +46,21 @@ COPYRIGHT_DATE=$(date +%Y)
 [ ${COPYRIGHT_DATE} -gt 2014 ] && COPYRIGHT_DATE="2014-${COPYRIGHT_DATE}"
 pretty_echo "
 
-DebianServerSetup v.${VERSION} - copyright ${COPYRIGHT_DATE} ${AUTHOR}
+Debian 8 ServerSetup v.${VERSION} - copyright ${COPYRIGHT_DATE} ${AUTHOR}
 This program will updated the whole system and install a set of common services
 needed for a production Web Server based on Debian based distribution.
 This is the list of the services supported:
 
 1) MySQL (database server)
-2) NGINX (reverse proxy web server)
-3) APACHE (web server)
-3) PHP (web backend)
-4) EXIM (MTA mail server)
+2) NGINX (web server)
+3) PHP-FPM (web backend)
+4) POSTFIX (mail server)
 5) SHOREWALL (firewall)
 
 During the installation you will be prompted to insert the following information:
 
-HOSTNAME: hostname of the server ("web1" for example)
-FQDN: a Fully Qualified Domain Name ("web1.mydomain.com" for example)
+HOSTNAME: hostname of the server (\"web1\" for example)
+FQDN: a Fully Qualified Domain Name (\"web1.mydomain.com\" for example)
 IP_ADDRESS: a public IP address
 MYSQL ROOT PASSWORD: only if you decide to install MySQL
 -----------------------------------------------------------------------------------------"
@@ -72,8 +71,8 @@ if ! select_yes "Do you want to proceed?"; then exit 0; fi
 # This is just for clean-up in case some server has an old repository configured
 sed -i "/non\-us\.debian\.org/d" /etc/apt/sources.list
 
-# Make sure to use wheezy repository
-sed -i "{s#squeeze.*#wheezy/updates main contrib non-free#g}" /etc/apt/sources.list
+# Make sure to use jessie repository
+sed -i "{s#squeeze.*#jessie/updates main contrib non-free#g}" /etc/apt/sources.list
 
 # SETTING UP LOCALES
 # This is needed in case the server does not have any locale already configured
@@ -92,12 +91,13 @@ fi
 
 # UPDATE THE WHOLE SYSTEM
 export DEBIAN_FRONTEND=noninteractive
+apt-get remove --purge exim*
 apt-get update
 apt-get -y upgrade
 apt-get -y dist-upgrade
 
 # INSTALL USEFUL TOOLS
-apt-get -y install vim git pwgen
+apt-get -y install vim screen git pwgen
 
 # SETUP IP ADDRESS AND HOSTNAME
 IP_ADDRESS=$(ifconfig | grep "inet addr:" | grep -v "127\.0\.0\.1" | awk '{print $2}' | awk -F':' '{print $2}')
@@ -225,7 +225,7 @@ then
 fi
 
 # NGINX
-if select_yes "Do you want to install NGINX reverse proxy web server?"
+if select_yes "Do you want to install NGINX web server?"
 then
     if ! $(is_installed nginx)
     then
@@ -233,33 +233,14 @@ then
 
         # Configure NGINX for production
         CPU_CORES=`grep "^processor" /proc/cpuinfo | wc -l`
-        sed -i "{s/# gzip on;/gzip on;/g}" /etc/nginx/nginx.conf
-        sed -i "{s/# gzip_/gzip_/g}" /etc/nginx/nginx.conf
+        sed -i "{s/# gzip/gzip/g}" /etc/nginx/nginx.conf
         sed -i "{s/# server_tokens off;/server_tokens off;/g}" /etc/nginx/nginx.conf
         sed -i "/gzip_types/s/;/ image\/svg+xml;/" /etc/nginx/nginx.conf
         sed -i "{s/^worker_processes.*/worker_processes ${CPU_CORES};/g}" /etc/nginx/nginx.conf
         sed -i "{s/worker_connections.*/worker_connections 1024;/g}" /etc/nginx/nginx.conf
+	rm -f /etc/nginx/sites-enabled/default
     else
         pretty_echo "NGINX already installed... nothing done"
-    fi
-fi
-
-# APACHE
-if select_yes "Do you want to install APACHE web server?"
-then
-    if ! $(is_installed apache2)
-    then
-        apt-get -y install apache2 libapache2-mod-fastcgi apache2-mpm-worker
-
-        # Configure APACHE for production
-        sed -i "{s/^NameVirtualHost.*/NameVirtualHost 127.0.0.1:8080/g}" /etc/apache2/ports.conf
-        sed -i "{s/^Listen.*/Listen 127.0.0.1:8080/g}" /etc/apache2/ports.conf
-        sed -i "{s/<VirtualHost.*/<VirtualHost 127.0.0.1:8080>/g}" /etc/apache2/sites-available/default
-
-        # Apache modules
-        a2enmod fastcgi actions alias rewrite
-    else
-        pretty_echo "APACHE already installed... nothing done"
     fi
 fi
 
@@ -272,6 +253,7 @@ then
 
         # Configure PHP-FPM
         sed -i "{s/^;cgi\.fix_pathinfo=1/cgi.fix_pathinfo=0/g}" /etc/php5/fpm/php.ini
+	sed -i "{s/;pm.max_requests = 500/pm.max_requests = 500/g}" /etc/php5/fpm/pool.d/www.conf
         sed -i -e 's|^;*request_terminate_timeout.*|request_terminate_timeout = 600|' /etc/php5/fpm/pool.d/www.conf
         sed -i "{s/;pm.max_requests =.*/pm.max_requests = 500/g}" /etc/php5/fpm/pool.d/www.conf
 
@@ -303,20 +285,17 @@ then
 fi
 
 
-# EXIM
-if select_yes "Do you want to install Exim mail server?"
+# POSTFIX 
+if select_yes "Do you want to install Postfix mail server?"
 then
-    if ! $(is_installed exim4)
+    if ! $(is_installed postfix)
     then
-        apt-get -y install exim4
+        echo "postfix postfix/protocols select all" | debconf-set-selections
+        echo "postfix postfix/relayhost string " | debconf-set-selections
+        echo "postfix postfix/main_mailer_type select Internet Site" | debconf-set-selections
+        echo "postfix postfix/mailname string test.chip2bit.com" | debconf-set-selections
+        apt-get -y install postfix 
     fi
-    # Clean mail queue
-    [ -n "$(mailq)" ] && rm -f /var/spool/exim4/input/*
-
-    # Configuration
-    sed -i "{s/^dc_eximconfig_configtype=.*/dc_eximconfig_configtype='internet'/g}" /etc/exim4/update-exim4.conf.conf
-    sed -i "{s/^dc_other_hostnames=.*/dc_other_hostnames='${HOSTNAME_FQDN}; ${HOSTNAME_NAME}; localhost.localdomain; localhost'/g}" /etc/exim4/update-exim4.conf.conf
-    echo "${HOSTNAME_FQDN}" > /etc/mailname
 fi
 
 # SHOREWALL
@@ -334,15 +313,8 @@ then
     cp /usr/share/doc/shorewall/examples/one-interface/rules /etc/shorewall/rules
     cp /usr/share/doc/shorewall/examples/one-interface/zones /etc/shorewall/zones
     echo -e "\n# Custom rules\n" >> /etc/shorewall/rules
-    if $(is_installed nginx); then
-        echo "HTTP/ACCEPT     net             \$FW" >> /etc/shorewall/rules
-    fi
-    if $(is_installed openssh-server); then
-        echo "SSH/ACCEPT      net             \$FW" >> /etc/shorewall/rules
-    fi
-    if $(is_installed vsftp); then
-        echo "FTP/ACCEPT      net             \$FW" >> /etc/shorewall/rules
-    fi
+    echo "HTTP/ACCEPT     net             \$FW" >> /etc/shorewall/rules
+    echo "SSH/ACCEPT      net             \$FW" >> /etc/shorewall/rules
 fi
 
 # SSH KEY
@@ -366,8 +338,14 @@ then
 fi
 
 # DOWNLOAD MANAGEMENT TOOLS
-wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/add_domain.sh && chmod 750 add_domain.sh
-wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/del_domain.sh && chmod 750 del_domain.sh
+wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/add_domain.sh && chmod 750 add_domain.sh
+wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/del_domain.sh && chmod 750 del_domain.sh
+mkdir /etc/nginx/global
+wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/nginx/global/common.conf -O /etc/nginx/global/common.conf
+wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/nginx/global/dokuwiki.conf -O /etc/nginx/global/dokuwiki.conf
+wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/nginx/global/phpmyadmin.conf -O /etc/nginx/global/phpmyadmin.conf
+wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/nginx/global/plainphp.conf -O /etc/nginx/global/plainphp.conf
+wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/nginx/global/wordpress.conf -O /etc/nginx/global/wordpress.conf
 
 # RESTART SERVICES
 pretty_echo "Restarting all services..."
@@ -377,14 +355,11 @@ fi
 if $(is_installed php5-fpm); then
     service php5-fpm restart
 fi
-if $(is_installed apache2); then
-    service apache2 restart
-fi
 if $(is_installed nginx); then
     service nginx restart
 fi
-if $(is_installed exim4); then
-    service exim4 restart
+if $(is_installed postfix); then
+    service postfix restart
 fi
 if $(is_installed shorewall); then
     service shorewall restart
@@ -396,3 +371,4 @@ then
     reboot
 fi
 exit 0
+

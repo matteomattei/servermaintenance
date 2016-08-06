@@ -13,5 +13,5 @@ This is an automatic script that installs and configure the following services o
  - A SET OF TOOL TO MANGE DOMAINS
 
 ```
-wget https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/DebianServerSetup.sh && /bin/bash DebianServerSetup.sh && rm DebianServerSetup.sh
+wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/DebianServerSetup.sh && /bin/bash DebianServerSetup.sh && rm DebianServerSetup.sh
 ```

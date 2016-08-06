@@ -91,7 +91,7 @@ fi
 
 # UPDATE THE WHOLE SYSTEM
 export DEBIAN_FRONTEND=noninteractive
-apt-get remove --purge exim*
+apt-get -y remove --purge exim*
 apt-get update
 apt-get -y upgrade
 apt-get -y dist-upgrade

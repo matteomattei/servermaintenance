@@ -95,6 +95,9 @@ apt-get -y remove --purge exim*
 apt-get update
 apt-get -y upgrade
 apt-get -y dist-upgrade
+apt-get -y autoremove --purge
+apt-get -y clean
+apt-get -y autoclean
 
 # INSTALL USEFUL TOOLS
 apt-get -y install vim screen git pwgen

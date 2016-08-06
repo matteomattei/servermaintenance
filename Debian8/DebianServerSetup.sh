@@ -5,7 +5,7 @@ AUTHOR="Matteo Mattei <info@matteomattei.com>"
 
 is_installed()
 {
-    dpkg -l "${1}" > /dev/null 2>&1
+    dpkg -l "${1}" 2> /dev/null | grep "^ii" > /dev/null
     return ${?}
 }
 

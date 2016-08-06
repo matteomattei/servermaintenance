@@ -62,11 +62,7 @@ curday=$(date +%F)
 megamkdir /Root/backup_${SERVER}/${curday} 2> /dev/null
 
 # Backup now!!!
-megasync --reload --no-progress -l ${WORKING_DIR} -r /Root/backup_${SERVER}/${curday} > /dev/null
-
-# Kill DBUS session daemon (workaround)
-kill ${DBUS_SESSION_BUS_PID}
-rm -f ${DBUS_SESSION_BUS_ADDRESS}
+megacopy --reload --no-progress --disable-previews -l ${WORKING_DIR} -r /Root/backup_${SERVER}/${curday} > /dev/null
 
 # Clean local environment
 rm -rf ${WORKING_DIR}

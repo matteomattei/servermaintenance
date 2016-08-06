@@ -378,6 +378,7 @@ then
 	if [ -n "${MYSQL_ROOT_PASSWORD}" ]; then
             sed -i "{s/MyRootPassword/${MYSQL_ROOT_PASSWORD}/g}" megabackup.sh
 	fi
+	sed -i "{s/servername/$(hostname -f)/g}" megabackup.sh
         echo "04 04 * * * root /root/megabackup.sh" >> /etc/crontab
     fi
 fi

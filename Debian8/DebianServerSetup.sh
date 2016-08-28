@@ -1,7 +1,8 @@
 #!/bin/bash
 
-VERSION="0.1"
+VERSION="0.2"
 AUTHOR="Matteo Mattei <info@matteomattei.com>"
+MANIFEST="/root/MANIFEST"
 
 is_installed()
 {
@@ -109,7 +110,7 @@ apt-get -y clean
 apt-get -y autoclean
 
 # INSTALL USEFUL TOOLS
-apt-get -y install vim screen git pwgen
+apt-get -y install vim screen git pwgen ntp
 
 # SETUP IP ADDRESS AND HOSTNAME
 IP_ADDRESS=$(ifconfig | grep "inet addr:" | grep -v "127\.0\.0\.1" | awk '{print $2}' | awk -F':' '{print $2}')
@@ -150,46 +151,64 @@ else
 fi
 
 # Now that we have the IP address we setup /etc/hosts
-while true
-do
-    pretty_echo "Current hostname: $(hostname)"
-    pretty_echo "Current FQDN: $(hostname -f)"
-    if select_yes "Do you want to change them?"
-    then
-        while true
-        do
-            pretty_echo "Please provide a new hostname (something like 'web1')"
-            read HOSTNAME_NAME
-            if [ -n "${HOSTNAME_NAME}" ]
-            then
-                echo "${HOSTNAME_NAME}" > /etc/hostname
-                break
-            fi
-        done
-        while true
-        do
-            pretty_echo "Please provide a new FQDN (something like 'web1.mydomain.tld')"
-            read HOSTNAME_FQDN
-            if [ -n "${HOSTNAME_FQDN}" ]
-            then
-                break
-            fi
-        done
-        # remove all lines with localhost and the public IP from /etc/hosts
-        sed -i "/^${IP_ADDRESS}.*/d" /etc/hosts
-        sed -i "/^127\.0\..*/d" /etc/hosts
+if [ -f "${MANIFEST}" ]; then
+    HOSTNAME_NAME="$(grep '^HOSTNAME_NAME=' ${MANIFEST} | awk -F'=' '{print $2}')"
+    HOSTNAME_FQDN="$(grep '^HOSTNAME_FQDN=' ${MANIFEST} | awk -F'=' '{print $2}')"
+    echo "${HOSTNAME_NAME}" > /etc/hostname
 
-        # Insert the correct values in the top of the /etc/hosts
-        sed -i "1i ${IP_ADDRESS} ${HOSTNAME_FQDN} ${HOSTNAME_NAME}" /etc/hosts
-        sed -i "1i 127.0.0.1 localhost.localdomain localhost" /etc/hosts
+    # remove all lines with localhost and the public IP from /etc/hosts
+    sed -i "/^${IP_ADDRESS}.*/d" /etc/hosts
+    sed -i "/^127\.0\..*/d" /etc/hosts
 
-        # Set up hostname
-        echo "${HOSTNAME_NAME}" > /etc/hostname
-        hostname -F /etc/hostname
-    else
-        break
-    fi
-done
+    # Insert the correct values in the top of the /etc/hosts
+    sed -i "1i ${IP_ADDRESS} ${HOSTNAME_FQDN} ${HOSTNAME_NAME}" /etc/hosts
+    sed -i "1i 127.0.0.1 localhost.localdomain localhost" /etc/hosts
+
+    # Set up hostname
+    hostname -F /etc/hostname
+else
+    while true
+    do
+        pretty_echo "Current hostname: $(hostname)"
+        pretty_echo "Current FQDN: $(hostname -f)"
+        if select_yes "Do you want to change them?"
+        then
+            while true
+            do
+                pretty_echo "Please provide a new hostname (something like 'web1')"
+                read HOSTNAME_NAME
+                if [ -n "${HOSTNAME_NAME}" ]
+                then
+                    echo "${HOSTNAME_NAME}" > /etc/hostname
+                    echo "HOSTNAME_NAME=${HOSTNAME_NAME}" >> ${MANIFEST}
+                    break
+                fi
+            done
+            while true
+            do
+                pretty_echo "Please provide a new FQDN (something like 'web1.mydomain.tld')"
+                read HOSTNAME_FQDN
+                if [ -n "${HOSTNAME_FQDN}" ]
+                then
+                    break
+                fi
+            done
+            # remove all lines with localhost and the public IP from /etc/hosts
+            sed -i "/^${IP_ADDRESS}.*/d" /etc/hosts
+            sed -i "/^127\.0\..*/d" /etc/hosts
+
+            # Insert the correct values in the top of the /etc/hosts
+            sed -i "1i ${IP_ADDRESS} ${HOSTNAME_FQDN} ${HOSTNAME_NAME}" /etc/hosts
+            sed -i "1i 127.0.0.1 localhost.localdomain localhost" /etc/hosts
+
+            echo "HOSTNAME_FQDN=${HOSTNAME_FQDN}" >> ${MANIFEST}
+            # Set up hostname
+            hostname -F /etc/hostname
+        else
+            break
+        fi
+    done
+fi
 
 # MYSQL
 if select_yes "Do you want to install MySQL server and client?"
@@ -197,25 +216,30 @@ then
     # MYSQL-SERVER
     if ! $(is_installed mysql-server)
     then
-        while true
-        do
-            pretty_echo "Please provide a MySQL root password"
-            read MYSQL_ROOT_PASSWORD
-            if [ -z "${MYSQL_ROOT_PASSWORD}" ]
-            then
-                pretty_echo "Password cannot be empty!"
-                continue
-            fi
-            pretty_echo "Please type the MySQL root password again"
-            read MYSQL_ROOT_PASSWORD_2
-            if [ ! "${MYSQL_ROOT_PASSWORD}" = "${MYSQL_ROOT_PASSWORD_2}" ]
-            then
-                pretty_echo "The two entered passwords do not match"
-                continue
-            else
-                break
-            fi
-        done
+        if [ -f "${MANIFEST}" ]; then
+            MYSQL_ROOT_PASSWORD="$(grep '^MYSQL_ROOT_PASSWORD=' ${MANIFEST} | awk -F'=' '{print $2}')"
+        else
+            while true
+            do
+                pretty_echo "Please provide a MySQL root password"
+                read MYSQL_ROOT_PASSWORD
+                if [ -z "${MYSQL_ROOT_PASSWORD}" ]
+                then
+                    pretty_echo "Password cannot be empty!"
+                    continue
+                fi
+                pretty_echo "Please type the MySQL root password again"
+                read MYSQL_ROOT_PASSWORD_2
+                if [ ! "${MYSQL_ROOT_PASSWORD}" = "${MYSQL_ROOT_PASSWORD_2}" ]
+                then
+                    pretty_echo "The two entered passwords do not match"
+                    continue
+                else
+                    echo "MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}" >> ${MANIFEST}
+                    break
+                fi
+            done
+        fi
         echo "mysql-server mysql-server/root_password password ${MYSQL_ROOT_PASSWORD}" | debconf-set-selections
         echo "mysql-server mysql-server/root_password_again password ${MYSQL_ROOT_PASSWORD}" | debconf-set-selections
         apt-get -y install mysql-server
@@ -250,7 +274,7 @@ then
         sed -i "/gzip_types/s/;/ image\/svg+xml;/" /etc/nginx/nginx.conf
         sed -i "{s/^worker_processes.*/worker_processes ${CPU_CORES};/g}" /etc/nginx/nginx.conf
         sed -i "{s/worker_connections.*/worker_connections 1024;/g}" /etc/nginx/nginx.conf
-	rm -f /etc/nginx/sites-enabled/default
+    rm -f /etc/nginx/sites-enabled/default
     else
         pretty_echo "NGINX already installed."
     fi
@@ -265,7 +289,7 @@ then
 
         # Configure PHP-FPM
         sed -i "{s/^;cgi\.fix_pathinfo=1/cgi.fix_pathinfo=0/g}" /etc/php5/fpm/php.ini
-	sed -i "{s/;pm.max_requests = 500/pm.max_requests = 500/g}" /etc/php5/fpm/pool.d/www.conf
+        sed -i "{s/;pm.max_requests = 500/pm.max_requests = 500/g}" /etc/php5/fpm/pool.d/www.conf
         sed -i -e 's|^;*request_terminate_timeout.*|request_terminate_timeout = 600|' /etc/php5/fpm/pool.d/www.conf
         sed -i "{s/;pm.max_requests =.*/pm.max_requests = 500/g}" /etc/php5/fpm/pool.d/www.conf
 
@@ -334,30 +358,39 @@ fi
 if select_yes "Do you want to install megatools?"
 then
     echo "[Login]" > /root/.megarc
-    while true
-    do
-        pretty_echo "Please provide Mega.co.nz username (email):"
-        read MEGA_USERNAME
-        if [ -n "${MEGA_USERNAME}" ]
-        then
-            echo "Username = ${MEGA_USERNAME}" >> /root/.megarc
-            break
-        else
-            pretty_echo "Please specify Mega.co.nz username"
-        fi
-    done
-    while true
-    do
-        pretty_echo "Please provide Mega.co.nz password:"
-        read MEGA_PASSWORD
-        if [ -n "${MEGA_PASSWORD}" ]
-        then
-            echo "Password = ${MEGA_PASSWORD}" >> /root/.megarc
-            break
-        else
-            pretty_echo "Please provide Mega.co.nz password"
-        fi
-    done
+    if [ -f "${MANIFEST}" ]; then
+        MEGA_USERNAME="$(grep '^MEGA_USERNAME=' ${MANIFEST} | awk -F'=' '{print $2}')"
+        MEGA_PASSWORD="$(grep '^MEGA_PASSWORD=' ${MANIFEST} | awk -F'=' '{print $2}')"
+        echo "Username = ${MEGA_USERNAME}" > /root/.megarc
+        echo "Password = ${MEGA_PASSWORD}" >> /root/.megarc
+    else
+        while true
+        do
+            pretty_echo "Please provide Mega.co.nz username (email):"
+            read MEGA_USERNAME
+            if [ -n "${MEGA_USERNAME}" ]
+            then
+                echo "Username = ${MEGA_USERNAME}" >> /root/.megarc
+                break
+            else
+                pretty_echo "Please specify Mega.co.nz username"
+            fi
+        done
+        while true
+        do
+            pretty_echo "Please provide Mega.co.nz password:"
+            read MEGA_PASSWORD
+            if [ -n "${MEGA_PASSWORD}" ]
+            then
+                echo "Password = ${MEGA_PASSWORD}" >> /root/.megarc
+                break
+            else
+                pretty_echo "Please provide Mega.co.nz password"
+            fi
+        done
+        echo "MEGA_USERNAME=${MEGA_USERNAME}" >> ${MANIFEST}
+        echo "MEGA_PASSWORD=${MEGA_PASSWORD}" >> ${MANIFEST}
+    fi
     chmod 640 /root/.megarc
     if ! $(is_installed megatools)
     then
@@ -375,10 +408,10 @@ then
         dpkg -i megatools_*.deb
         rm -f megatools_*.deb
         wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/backup/megabackup.sh && chmod +x megabackup.sh
-	if [ -n "${MYSQL_ROOT_PASSWORD}" ]; then
+    if [ -n "${MYSQL_ROOT_PASSWORD}" ]; then
             sed -i "{s/MyRootPassword/${MYSQL_ROOT_PASSWORD}/g}" megabackup.sh
-	fi
-	sed -i "{s/servername/$(hostname -f)/g}" megabackup.sh
+    fi
+    sed -i "{s/servername/$(hostname -f)/g}" megabackup.sh
         echo "04 04 * * * root /root/megabackup.sh" >> /etc/crontab
     fi
 fi
@@ -386,21 +419,26 @@ fi
 # SSH KEY
 if select_yes "Do you want to add a public key for SSH access?"
 then
-    while true
-    do
-        pretty_echo "Please paste your public key here:"
-        read PUBKEY
-        if [ -n "${PUBKEY}" ]
-        then
-            mkdir -p /root/.ssh/
-            echo "${PUBKEY}" >> /root/.ssh/authorized_keys
-            chmod 660 /root/.ssh/authorized_keys
-            chmod 770 /root/.ssh
-            break
-        else
-            pretty_echo "Please specify a key"
-        fi
-    done
+    if [ -f "${MANIFEST}" ]; then
+        PUBKEY="$(grep '^PUBKEY=' ${MANIFEST} | cut -d'=' -f2-)"
+    else
+        while true
+        do
+            pretty_echo "Please paste your public key here:"
+            read PUBKEY
+            if [ -n "${PUBKEY}" ]
+            then
+                echo "PUBKEY=${PUBKEY}" >> ${MANIFEST}
+                break
+            else
+                pretty_echo "Please specify a key"
+            fi
+        done
+    fi
+    mkdir -p /root/.ssh/
+    echo "${PUBKEY}" >> /root/.ssh/authorized_keys
+    chmod 660 /root/.ssh/authorized_keys
+    chmod 770 /root/.ssh
 fi
 
 # DOWNLOAD MANAGEMENT TOOLS
@@ -430,6 +468,8 @@ fi
 if $(is_installed shorewall); then
     service shorewall restart
 fi
+
+chmod 600 ${MANIFEST}
 
 pretty_echo "Installation complete. You should restart the server now"
 if select_yes "Do you want to restart the server now?"

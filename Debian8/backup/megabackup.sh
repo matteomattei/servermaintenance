@@ -22,7 +22,7 @@ cd ${WORKING_DIR}
 
 # Backup /etc folder
 cd /
-tar cJf ${WORKING_DIR}/etc.tar.gx etc
+tar cJpf ${WORKING_DIR}/etc.tar.xz etc
 cd - > /dev/null
 
 # Backup MySQL
@@ -38,12 +38,14 @@ then
         mysqldump --opt -u${MYSQL_USER} -p${MYSQL_PASSWORD} --events --ignore-table=mysql.event --all-databases | gzip > ${WORKING_DIR}/mysql/ALL_DATABASES_$(date +%F_%T).sql.gz
 fi
 
+cp /root/domains.txt ${WORKING_DIR}/domains.txt
+
 # Backup domains
 mkdir ${WORKING_DIR}/domains
 for folder in $(find ${DOMAINS_FOLDER} -mindepth 1 -maxdepth 1 -type d)
 do
         cd $(dirname ${folder})
-        tar cJf ${WORKING_DIR}/domains/$(basename ${folder}).tar.xz $(basename ${folder})
+        tar cJpf ${WORKING_DIR}/domains/$(basename ${folder}).tar.xz $(basename ${folder}) --warning=no-file-changed --ignore-failed-read
         cd - > /dev/null
 done
 

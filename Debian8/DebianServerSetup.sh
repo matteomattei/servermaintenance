@@ -361,7 +361,7 @@ then
     if [ -f "${MANIFEST}" ]; then
         MEGA_USERNAME="$(grep '^MEGA_USERNAME=' ${MANIFEST} | awk -F'=' '{print $2}')"
         MEGA_PASSWORD="$(grep '^MEGA_PASSWORD=' ${MANIFEST} | awk -F'=' '{print $2}')"
-        echo "Username = ${MEGA_USERNAME}" > /root/.megarc
+        echo "Username = ${MEGA_USERNAME}" >> /root/.megarc
         echo "Password = ${MEGA_PASSWORD}" >> /root/.megarc
     else
         while true

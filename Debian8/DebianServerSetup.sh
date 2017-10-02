@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.2"
+VERSION="0.3"
 AUTHOR="Matteo Mattei <info@matteomattei.com>"
 MANIFEST="/root/MANIFEST"
 
@@ -47,7 +47,7 @@ COPYRIGHT_DATE=$(date +%Y)
 [ ${COPYRIGHT_DATE} -gt 2014 ] && COPYRIGHT_DATE="2014-${COPYRIGHT_DATE}"
 pretty_echo "
 
-Debian 8 ServerSetup v.${VERSION} - copyright ${COPYRIGHT_DATE} ${AUTHOR}
+Debian ServerSetup v.${VERSION} - copyright ${COPYRIGHT_DATE} ${AUTHOR}
 This program will updated the whole system and install a set of common services
 needed for a production Web Server based on Debian based distribution.
 This is the list of the services supported:
@@ -77,13 +77,6 @@ then
     resize2fs /dev/localhost-vg/root
 fi
 
-# SETUP APT SOURCE
-# This is just for clean-up in case some server has an old repository configured
-sed -i "/non\-us\.debian\.org/d" /etc/apt/sources.list
-
-# Make sure to use jessie repository
-sed -i "{s#squeeze.*#jessie/updates main contrib non-free#g}" /etc/apt/sources.list
-
 # SETTING UP LOCALES
 # This is needed in case the server does not have any locale already configured
 if [ -z "${LC_ALL}" ] || [ -z "${LANGUAGE}" ] || [ -z "${LANG}" ]
@@ -110,10 +103,23 @@ apt-get -y clean
 apt-get -y autoclean
 
 # INSTALL USEFUL TOOLS
-apt-get -y install vim screen git pwgen ntp
+apt-get -y install vim screen git pwgen ntp rsync ntpdate telnet nmap htop iotop tree mlocate net-tools
+
+ntpdate www.clock.org
+rm -f /etc/localtime
+ln -s /usr/share/zoneinfo/Europe/Rome /etc/localtime
+
+sed -i "s/^# export LS_OPTIONS=/export LS_OPTIONS=/g" /root/.bashrc
+sed -i "s/^# eval \"\`dircolors\`\"/eval \"\`dircolors\`\"/g" /root/.bashrc
+sed -i "s/^# alias ls=/alias ls=/g" /root/.bashrc
+sed -i "s/^# alias ll=/alias ll=/g" /root/.bashrc
+sed -i "s/^# alias l=/alias l=/g" /root/.bashrc
+sed -i "s/^# alias rm=/alias rm=/g" /root/.bashrc
+sed -i "s/^# alias cp=/alias cp=/g" /root/.bashrc
+sed -i "s/^# alias mv=/alias mv=/g" /root/.bashrc
 
 # SETUP IP ADDRESS AND HOSTNAME
-IP_ADDRESS=$(ifconfig | grep "inet addr:" | grep -v "127\.0\.0\.1" | awk '{print $2}' | awk -F':' '{print $2}')
+IP_ADDRESS=$(ip addr show | grep "inet " | grep -v "127\.0\.0\.1" | awk '{print $2}' | grep -Eo "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+")
 if [ -n "${IP_ADDRESS}" ]
 then
     if ! select_yes "Do you want to use the IP address ${IP_ADDRESS}?"
@@ -156,13 +162,11 @@ if [ -f "${MANIFEST}" ]; then
     HOSTNAME_FQDN="$(grep '^HOSTNAME_FQDN=' ${MANIFEST} | awk -F'=' '{print $2}')"
     echo "${HOSTNAME_NAME}" > /etc/hostname
 
-    # remove all lines with localhost and the public IP from /etc/hosts
+    # remove all lines with the public IP from /etc/hosts
     sed -i "/^${IP_ADDRESS}.*/d" /etc/hosts
-    sed -i "/^127\.0\..*/d" /etc/hosts
 
     # Insert the correct values in the top of the /etc/hosts
     sed -i "1i ${IP_ADDRESS} ${HOSTNAME_FQDN} ${HOSTNAME_NAME}" /etc/hosts
-    sed -i "1i 127.0.0.1 localhost.localdomain localhost" /etc/hosts
 
     # Set up hostname
     hostname -F /etc/hostname
@@ -195,11 +199,9 @@ else
             done
             # remove all lines with localhost and the public IP from /etc/hosts
             sed -i "/^${IP_ADDRESS}.*/d" /etc/hosts
-            sed -i "/^127\.0\..*/d" /etc/hosts
 
             # Insert the correct values in the top of the /etc/hosts
             sed -i "1i ${IP_ADDRESS} ${HOSTNAME_FQDN} ${HOSTNAME_NAME}" /etc/hosts
-            sed -i "1i 127.0.0.1 localhost.localdomain localhost" /etc/hosts
 
             echo "HOSTNAME_FQDN=${HOSTNAME_FQDN}" >> ${MANIFEST}
             # Set up hostname
@@ -274,7 +276,7 @@ then
         sed -i "/gzip_types/s/;/ image\/svg+xml;/" /etc/nginx/nginx.conf
         sed -i "{s/^worker_processes.*/worker_processes ${CPU_CORES};/g}" /etc/nginx/nginx.conf
         sed -i "{s/worker_connections.*/worker_connections 1024;/g}" /etc/nginx/nginx.conf
-    rm -f /etc/nginx/sites-enabled/default
+        rm -f /etc/nginx/sites-enabled/default
     else
         pretty_echo "NGINX already installed."
     fi
@@ -283,22 +285,21 @@ fi
 # PHP-FPM
 if select_yes "Do you want to install PHP-FPM?"
 then
-    if ! $(is_installed php5-fpm)
+    if ! $(is_installed php-fpm)
     then
-        apt-get -y install php5 php5-fpm php5-mcrypt
+        apt-get -y install php php-fpm php-mcrypt
 
         # Configure PHP-FPM
-        sed -i "{s/^;cgi\.fix_pathinfo=1/cgi.fix_pathinfo=0/g}" /etc/php5/fpm/php.ini
-        sed -i "{s/;pm.max_requests = 500/pm.max_requests = 500/g}" /etc/php5/fpm/pool.d/www.conf
-        sed -i -e 's|^;*request_terminate_timeout.*|request_terminate_timeout = 600|' /etc/php5/fpm/pool.d/www.conf
-        sed -i "{s/;pm.max_requests =.*/pm.max_requests = 500/g}" /etc/php5/fpm/pool.d/www.conf
+        sed -i "{s/^;cgi\.fix_pathinfo=1/cgi.fix_pathinfo=0/g}" /etc/php/7.0/fpm/php.ini
+        sed -i "{s/;pm.max_requests = 500/pm.max_requests = 500/g}" /etc/php/7.0/fpm/pool.d/www.conf
+        sed -i -e 's|^;*request_terminate_timeout.*|request_terminate_timeout = 600|' /etc/php/7.0/fpm/pool.d/www.conf
 
         # PHP-MYSQL
         if $(is_installed mysql-server)
         then
-            if ! $(is_installed php5-mysql)
+            if ! $(is_installed php-mysql)
             then
-                apt-get -y install php5-mysql
+                apt-get -y install php-mysql
             fi
 
             # PHPMYADMIN
@@ -330,7 +331,7 @@ then
         echo "postfix postfix/protocols select all" | debconf-set-selections
         echo "postfix postfix/relayhost string " | debconf-set-selections
         echo "postfix postfix/main_mailer_type select Internet Site" | debconf-set-selections
-        echo "postfix postfix/mailname string test.chip2bit.com" | debconf-set-selections
+        echo "postfix postfix/mailname string $(hostname -f)" | debconf-set-selections
         apt-get -y install postfix
     fi
 fi
@@ -351,6 +352,7 @@ then
     cp /usr/share/doc/shorewall/examples/one-interface/zones /etc/shorewall/zones
     echo -e "\n# Custom rules\n" >> /etc/shorewall/rules
     echo "HTTP/ACCEPT     net             \$FW" >> /etc/shorewall/rules
+    echo "HTTPS/ACCEPT     net             \$FW" >> /etc/shorewall/rules
     echo "SSH/ACCEPT      net             \$FW" >> /etc/shorewall/rules
 fi
 
@@ -394,24 +396,12 @@ then
     chmod 640 /root/.megarc
     if ! $(is_installed megatools)
     then
-        apt-get install -y \
-            glib-networking \
-            libproxy1 \
-            glib-networking-services \
-            glib-networking-common \
-            gsettings-desktop-schemas \
-            dconf-gsettings-backend \
-            dconf-service \
-            libdconf1 \
-            libcurl3
-        wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/backup/megatools_1.9.97-1_amd64.deb
-        dpkg -i megatools_*.deb
-        rm -f megatools_*.deb
+        apt-get install -y megatools
         wget -q https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian8/backup/megabackup.sh && chmod +x megabackup.sh
-    if [ -n "${MYSQL_ROOT_PASSWORD}" ]; then
+        if [ -n "${MYSQL_ROOT_PASSWORD}" ]; then
             sed -i "{s/MyRootPassword/${MYSQL_ROOT_PASSWORD}/g}" megabackup.sh
-    fi
-    sed -i "{s/servername/$(hostname -f)/g}" megabackup.sh
+        fi
+        sed -i "{s/servername/$(hostname -f)/g}" megabackup.sh
         echo "04 04 * * * root /root/megabackup.sh" >> /etc/crontab
     fi
 fi
@@ -456,8 +446,8 @@ pretty_echo "Restarting all services..."
 if $(is_installed mysql-server); then
     service mysql restart
 fi
-if $(is_installed php5-fpm); then
-    service php5-fpm restart
+if $(is_installed php-fpm); then
+    service php7.0-fpm restart
 fi
 if $(is_installed nginx); then
     service nginx restart

@@ -3,7 +3,7 @@ set -e
 
 DOMAIN="${1}"
 BASE_ROOT="/var/www"
-DB_DOMAINS="/root/domains"
+DB_DOMAINS="/root/domains.txt"
 DB_PASSWORD=""
 DB_USER="root"
 

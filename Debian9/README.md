@@ -13,9 +13,9 @@ Now run screen and execute all other commands inside screen:
 apt-get install nginx php-fpm php-curl php-mysql git python3-pip certbot mysql-server mysql-client phpmyadmin vim net-tools tree memcached php-memcached man
 ```
 
-When **Web server to reconfigure automatically: ** select **NONE**
-When **Configure database for phpmyadmin with dbconfig-common?** select **Yes**
-When **MySQL application password for phpmyadmin:** type **ENTER**
+  - When **Web server to reconfigure automatically: ** select **NONE**
+  - When **Configure database for phpmyadmin with dbconfig-common?** select **Yes**
+  - When **MySQL application password for phpmyadmin:** type **ENTER**
 
 Edit ```/usr/share/vim/vim80/defaults.vim``` and comment these lines:
 ```
@@ -120,8 +120,20 @@ swapon /swapfile
 echo "/swapfile none swap sw 0 0" >> /etc/fstab
 ```
 
-Copy all needed nginx configurations:
+Copy all needed nginx configurations and domains manager:
 
 ```
-wget -q 
+mkdir -p /etc/nginx/global
+wget -q -O - https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian9/nginx/global/codeigniter_production.conf > /etc/nginx/global/codeigniter_production.conf
+wget -q -O - https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian9/nginx/global/codeigniter_testing.conf > /etc/nginx/global/codeigniter_testing.conf
+wget -q -O - https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian9/nginx/global/common.conf > /etc/nginx/global/common.conf
+wget -q -O - https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian9/nginx/global/dokuwiki.conf > /etc/nginx/global/dokuwiki.conf
+wget -q -O - https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian9/nginx/global/phpmyadmin.conf > /etc/nginx/global/phpmyadmin.conf
+wget -q -O - https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian9/nginx/global/plainphp.conf > /etc/nginx/global/plpainphp.conf
+wget -q -O - https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian9/nginx/global/ssl.conf > /etc/nginx/global/ssl.conf
+wget -q -O - https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian9/nginx/global/wordpress.conf > /etc/nginx/global/wordpress.conf
+wget -q -O - https://raw.githubusercontent.com/matteomattei/servermaintenance/master/Debian9/lemp.py > /root/lemp.py
+chmod +x /root/lemp.py
+chmod 750 /root/lemp.py
+
 ```

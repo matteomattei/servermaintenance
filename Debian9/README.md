@@ -13,7 +13,7 @@ Now run screen and execute all other commands inside screen:
 apt-get install nginx php-fpm php-curl php-mysql git python3-pip certbot mysql-server mysql-client phpmyadmin vim net-tools tree memcached php-memcached man
 ```
 
-  - When **Web server to reconfigure automatically: ** select **NONE**
+  - When **Web server to reconfigure automatically:** select **NONE**
   - When **Configure database for phpmyadmin with dbconfig-common?** select **Yes**
   - When **MySQL application password for phpmyadmin:** type **ENTER**
 

@@ -35,9 +35,10 @@ certbot register --agree-tos -m matteo.mattei@gmail.com
 ```
 
 Configure hostname properly in /etc/hosts and /etc/hostname
-Configure mysql and set root password:
+Configure mysql, set root password and disable UNIX socket authentication:
 
 ```
+mysql -u root mysql -e "update user set plugin='' where user='root'; flush privileges;"
 mysql_secure_intallation
 ```
 

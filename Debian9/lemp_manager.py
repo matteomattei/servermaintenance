@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# LEMP MANAGER v1.0
+# LEMP MANAGER v1.1
 # Copyright 2017 Matteo Mattei <info@matteomattei.com>
 
 import sys
@@ -7,6 +7,8 @@ import os
 import shutil
 import subprocess
 import getopt
+import crypt
+import pwd
 from tld import get_tld
 
 ######### CONFIGURATION ############
@@ -14,6 +16,7 @@ BASE_ROOT='/home'
 START_USER_NUM=5001
 BASE_USER_NAME='web'
 PHP_FPM_TEMPLATE='/etc/php/7.0/fpm/pool.d/www.conf'
+USER_PASSWORD='qwertyuioplkjhgfdsazxcvbnm'
 
 ####################################
 ############ FUNCTIONS #############
@@ -25,14 +28,15 @@ def usage():
     sys.stdout.write('%s -a|--action=<action> [-d|--domain=<domain>] [-A|--alias=<alias>] [options]\n' % sys.argv[0])
     sys.stdout.write('\nParameters:\n')
     sys.stdout.write('\t-a|--action=ACTION\n\t\tit is mandatory\n')
-    sys.stdout.write('\t-d|--domain=domain.tld\n\t\tcan be used only with [add_domain, remove_domain, add_alias, get_certs]\n')
-    sys.stdout.write('\t-A|--alias=alias.domain.tld\n\t\tcan be used only with [add_alias, remove_alias]\n')
+    sys.stdout.write('\t-d|--domain=domain.tld\n\t\tcan be used only with [add_domain, remove_domain, add_alias, get_certs, get_info]\n')
+    sys.stdout.write('\t-A|--alias=alias.domain.tld\n\t\tcan be used only with [add_alias, remove_alias, get_info]\n')
     sys.stdout.write('\nActions:\n')
     sys.stdout.write('\tadd_domain\tAdd a new domain\n')
     sys.stdout.write('\tadd_alias\tAdd a new domain alias to an existent domain\n')
     sys.stdout.write('\tremove_domain\tRemove an existent domain\n')
     sys.stdout.write('\tremove_alias\tRemove an existent domain alias\n')
     sys.stdout.write('\tget_certs\tObtain SSL certifiate and deploy it\n')
+    sys.stdout.write('\tget_info\tGet information of a domain or a domain alias (username)\n')
     sys.stdout.write('\nOptions:\n')
     sys.stdout.write('\t-f|--fakessl\tUse self signed certificate (only usable with [add_domain, add_alias])\n')
 
@@ -84,6 +88,15 @@ def add_new_user(username,uid,homedir):
         username], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.stderr != b'':
         sys.stdout.write('Error adding user %s with uid %d: %s\n' % (username,uid,res.stderr))
+        sys.exit(1)
+    enc_password = crypt.crypt(USER_PASSWORD,crypt.mksalt(crypt.METHOD_SHA512))
+    res = subprocess.run([
+        'usermod',
+        '-p',
+        enc_password,
+        username], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if res.stderr != b'':
+        sys.stdout.write('Error setting password for user %s: %s\n' % (username,res.stderr))
         sys.exit(1)
 
 def remove_user(homedir):
@@ -186,7 +199,7 @@ def remove_php_pool(domain):
 def domains_in_virtualhost(domain):
     """This function returns the list of domains configured in the virtualhost"""
     buf = []
-    with open('/etc/nginx/sites-enabled/'+domain,'r') as f:
+    with open('/etc/nginx/sites-available/'+domain,'r') as f:
         buf = f.readlines()
     domains = []
     for line in buf:
@@ -197,10 +210,13 @@ def domains_in_virtualhost(domain):
 
 def check_update_ssl_certs(domains):
     """This function get ssl certificates for all domains in virtualhost and adjust it"""
+    if len(domains)==0:
+        sys.stdout.write('No domain provided to certbot!\n')
+        return
     domains_list = []
     for d in domains:
         domains_list.append('-d')
-        domains_list.append(d)
+        domains_list.append(d.strip())
 
     res = subprocess.run([
         'certbot',
@@ -210,34 +226,32 @@ def check_update_ssl_certs(domains):
         '--webroot',
         '--webroot-path',
         '/var/www/html']+domains_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if res == b'':
-        sys.stdout.write('Unable to get/update SSL certificate: %s\n' % (alias_domain, res.stderr))
-        sys.exit(1)
-    if not os.path.islink('/etc/letsencrypt/live/'+domains[0]+'/fullchain.pem'):
-        sys.stdout.write('Missing SSL certificate %s\n' % '/etc/letsencrypt/live/'+domains[0]+'/fullchain.pem')
+    if not os.path.islink('/etc/letsencrypt/live/'+domains[0].strip()+'/fullchain.pem'):
+        sys.stdout.write('Missing SSL certificate %s\n' % '/etc/letsencrypt/live/'+domains[0].strip()+'/fullchain.pem')
         sys.stdout.write('Look at %s for more information about\n' % '/var/log/letsencrypt/letsencrypt.log')
-        sys.exit(1)
+        return
     buf = []
-    with open('/etc/letsencrypt/renewal/'+domains[0]+'.conf','r') as f:
+    with open('/etc/letsencrypt/renewal/'+domains[0].strip()+'.conf','r') as f:
         buf = f.readlines()
     for d in domains:
         for line in buf:
-            if line.startswith(d+' ='):
+            if line.startswith(d.strip()+' ='):
                 found = True
                 break
         if not found:
-            with open('/etc/letsencrypt/renewal/'+d+'.conf','a') as f:
-                f.write(d+' = /var/www/html\n')
+            with open('/etc/letsencrypt/renewal/'+d.strip()+'.conf','a') as f:
+                f.write(d.strip()+' = /var/www/html\n')
+    domain_parts = tld_and_sub(domains[0].strip())
     buf = []
-    with open('/etc/nginx/sites-available/'+domains[0],'r') as f:
+    with open('/etc/nginx/sites-available/'+domain_parts['name']+'.'+domain_parts['tld'],'r') as f:
         buf = f.readlines()
-    with open('/etc/nginx/sites-available/'+domains[0],'w') as f:
+    with open('/etc/nginx/sites-available/'+domain_parts['name']+'.'+domain_parts['tld'],'w') as f:
         for line in buf:
             if 'ssl_certificate ' in line:
-                f.write('    ssl_certificate /etc/letsencrypt/live/'+domains[0]+'/fullchain.pem;\n')
+                f.write('    ssl_certificate /etc/letsencrypt/live/'+domains[0].strip()+'/fullchain.pem;\n')
                 continue
             if 'ssl_certificate_key ' in line:
-                f.write('    ssl_certificate_key /etc/letsencrypt/live/'+domains[0]+'/privkey.pem;\n')
+                f.write('    ssl_certificate_key /etc/letsencrypt/live/'+domains[0].strip()+'/privkey.pem;\n')
                 continue
             f.write(line)
 
@@ -250,7 +264,7 @@ def remove_ssl_certs(domain):
     if os.path.isfile('/etc/letsencrypt/renewal/'+domain+'.conf'):
         os.unlink('/etc/letsencrypt/renewal/'+domain+'.conf')
 
-def create_nginx_virtualhost(domain,homedir,ssl_fake):
+def create_nginx_virtualhost(domain,homedir):
     """This function creates the NGINX virtualhost"""
     filename = '/etc/nginx/sites-available/'+domain
     dst_filename = '/etc/nginx/sites-enabled/'+domain
@@ -276,12 +290,8 @@ def create_nginx_virtualhost(domain,homedir,ssl_fake):
         f.write('    set $php_sock_name '+domain_parts['name']+'.'+domain_parts['tld']+';\n')
         f.write('    include /etc/nginx/global/common.conf;\n')
         f.write('    include /etc/nginx/global/wordpress.conf;\n')
-        if ssl_fake:
-            f.write('    ssl_certificate /etc/nginx/certs/server.crt;\n')
-            f.write('    ssl_certificate_key /etc/nginx/certs/server.key;\n')
-        else:
-            f.write('    ssl_certificate /etc/letsencrypt/live/'+domain_parts['name']+'.'+domain_parts['tld']+'/fullchain.pem;\n')
-            f.write('    ssl_certificate_key /etc/letsencrypt/live/'+domain_parts['name']+'.'+domain_parts['tld']+'/privkey.pem;\n')
+        f.write('    ssl_certificate /etc/nginx/certs/server.crt;\n')
+        f.write('    ssl_certificate_key /etc/nginx/certs/server.key;\n')
         f.write('    include /etc/nginx/global/ssl.conf;\n')
         f.write('}\n')
     os.symlink(filename,dst_filename)
@@ -377,6 +387,7 @@ def main():
     alias_domain = None
     action = None
     ssl_fake = False
+    show_info = False
     if len(opts) == 0:
         usage()
         sys.exit(2)
@@ -386,7 +397,7 @@ def main():
             sys.exit()
         elif o in ("-a", "--action"):
             action = a
-            if action not in ('add_domain','add_alias','remove_domain','remove_alias','get_certs'):
+            if action not in ('add_domain','add_alias','remove_domain','remove_alias','get_certs','get_info'):
                 sys.stdout.write("Unknown action %s\n" % action)
                 usage()
                 sys.exit(1)
@@ -401,7 +412,42 @@ def main():
             usage()
             sys.exit(1)
 
-    if action == 'add_domain':
+    if action == 'get_info':
+        if domain == None and alias_domain == None:
+            sys.stdout.write('Missing domain or alias domain\n')
+            sys.exit(1)
+        if domain != None and alias_domain != None:
+            sys.stdout.write('Please specify only a domain or an alias domain\n')
+            sys.exit(1)
+
+        # check if domain already exists
+        if domain != None:
+            domain_parts = tld_and_sub(domain)
+            base_domain_dir = os.path.join(BASE_ROOT,domain_parts['tld'])
+            child_domain_dir = os.path.join(base_domain_dir,domain_parts['name']+'.'+domain_parts['tld'])
+            domain = domain_parts['name']+'.'+domain_parts['tld']
+            if not os.path.isdir(child_domain_dir):
+                sys.stdout.write('Domain %s does not exist at %s\n' % (domain,child_domain_dir))
+                sys.exit(1)
+
+        # check if alias domain already exists
+        if alias_domain != None:
+            alias_domain_parts = tld_and_sub(alias_domain)
+            base_alias_domain_dir = os.path.join(BASE_ROOT,alias_domain_parts['tld'])
+            child_alias_domain_dir = os.path.join(base_alias_domain_dir,alias_domain_parts['name']+'.'+alias_domain_parts['tld'])
+            alias_domain = alias_domain_parts['name']+'.'+alias_domain_parts['tld']
+            if not (os.path.isdir(child_alias_domain_dir) or os.path.islink(child_alias_domain_dir)):
+                sys.stdout.write('Alias domain %s does not exist at %s\n' % (alias_domain,child_alias_domain_dir))
+                sys.exit(1)
+
+        if domain != None:
+            sys.stdout.write(pwd.getpwuid(os.stat(child_domain_dir).st_uid).pw_name+'\n')
+            sys.exit(0)
+        elif alias_domain != None:
+            sys.stdout.write(pwd.getpwuid(os.stat(child_alias_domain_dir).st_uid).pw_name+'\n')
+            sys.exit(0)
+
+    elif action == 'add_domain':
         if domain == None:
             sys.stdout.write('Missing domain\n')
             sys.exit(1)
@@ -422,7 +468,7 @@ def main():
         add_new_user(user['username'],user['uid'],child_domain_dir)
 
         # lock user password
-        lock_password(user['username'])
+        #lock_password(user['username'])
 
         # create additional folders
         create_subfolders(user['username'],child_domain_dir)
@@ -430,13 +476,13 @@ def main():
         # create PHP pool
         create_php_pool(user['username'],domain,child_domain_dir)
 
+        # create NGINX virtualhost
+        create_nginx_virtualhost(domain,child_domain_dir)
+
         # obtain SSL certificates from letsencrypt
         if not ssl_fake:
             domains = domains_in_virtualhost(domain)
             check_update_ssl_certs(domains)
-
-        # create NGINX virtualhost
-        create_nginx_virtualhost(domain,child_domain_dir,ssl_fake)
 
         # reload services (nginx + php-fpm)
         reload_services()

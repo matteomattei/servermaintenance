@@ -41,9 +41,9 @@ cd /root/dehydrated
 
 cp /etc/apache2/sites-enabled/${DOMAIN}.conf /tmp/backup_vhost
 
-sed -i "s@SSLCertificateFile.*@/root/dehydrated/certs/${DOMAIN}/cert.pem@g" /etc/apache2/sites-enabled/${DOMAIN}.conf
-sed -i "s@SSLCertificateKeyFile.*@/root/dehydrated/certs/${DOMAIN}/privkey.pem@g" /etc/apache2/sites-enabled/${DOMAIN}.conf
-sed -i "s@#SSLCertificateChainFile.*@/root/dehydrated/certs/${DOMAIN}/chain.pem@g" /etc/apache2/sites-enabled/${DOMAIN}.conf
+sed -i "s@SSLCertificateFile.*@SSLCertificateFile /root/dehydrated/certs/${DOMAIN}/cert.pem@g" /etc/apache2/sites-enabled/${DOMAIN}.conf
+sed -i "s@SSLCertificateKeyFile.*@SSLCertificateKeyFile /root/dehydrated/certs/${DOMAIN}/privkey.pem@g" /etc/apache2/sites-enabled/${DOMAIN}.conf
+sed -i "s@#SSLCertificateChainFile.*@/SSLCertificateChainFile root/dehydrated/certs/${DOMAIN}/chain.pem@g" /etc/apache2/sites-enabled/${DOMAIN}.conf
 
 apachectl configtest 2> /dev/null || :
 if [ ${?} -ne 0 ]

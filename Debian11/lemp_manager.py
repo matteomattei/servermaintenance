@@ -35,7 +35,7 @@ def usage():
     sys.stdout.write('\tadd_alias\tAdd a new domain alias to an existent domain\n')
     sys.stdout.write('\tremove_domain\tRemove an existent domain\n')
     sys.stdout.write('\tremove_alias\tRemove an existent domain alias\n')
-    sys.stdout.write('\tget_certs\tObtain SSL certifiate and deploy it\n')
+    sys.stdout.write('\tget_certs\tObtain SSL certificate and deploy it\n')
     sys.stdout.write('\tget_info\tGet information of a domain or a domain alias (username)\n')
     sys.stdout.write('\nOptions:\n')
     sys.stdout.write('\t-f|--fakessl\tUse self signed certificate (only usable with [add_domain, add_alias])\n')

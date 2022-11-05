@@ -306,7 +306,7 @@ def remove_nginx_virtualhost(domain):
 def reload_services():
     """This function reloads configurations of PHP-FPM and NGINX services"""
     res = subprocess.run([
-        '/etc/init.d/php7.0-fpm',
+        '/etc/init.d/php7.4-fpm',
         'reload'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.stderr != b'':
         sys.stdout('Unable to reload PHP: %s\n' % res.stderr)

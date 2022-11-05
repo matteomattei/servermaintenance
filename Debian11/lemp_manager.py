@@ -9,7 +9,7 @@ import subprocess
 import getopt
 import crypt
 import pwd
-from tld import get_tld
+from tld import get_fld
 
 ######### CONFIGURATION ############
 BASE_ROOT='/home'
@@ -43,7 +43,7 @@ def usage():
 def valid_domain(domain):
     """This function return True if the passed domain is valid, false otherwise"""
     try:
-        get_tld(domain,fix_protocol=True)
+        get_fld(domain,fix_protocol=True)
         return True
     except:
         return False
@@ -51,7 +51,7 @@ def valid_domain(domain):
 def tld_and_sub(domain):
     """This function returns a dictionary with tld (top level domain) and
     the related subdomain, www in case no subdomain is passed"""
-    tld = get_tld(domain,fix_protocol=True)
+    tld = get_fld(domain,fix_protocol=True)
     if domain==tld:
         return {'tld':domain,'name':'www'}
     index = domain.find(tld)

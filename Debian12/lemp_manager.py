@@ -81,7 +81,7 @@ def shacrypt(password, salt = None, rounds = 5000):
 
 def usage():
     """This function simply returns the usage"""
-    sys.stdout.write('Lemp Manager v'+VERSION.encode('utf-8')+'\n\n')
+    sys.stdout.write('Lemp Manager v'+VERSION+'\n\n')
     sys.stdout.write('Usage:\n')
     sys.stdout.write('%s -a|--action=<action> [-d|--domain=<domain>] [-A|--alias=<alias>] [options]\n' % sys.argv[0])
     sys.stdout.write('\nParameters:\n')
